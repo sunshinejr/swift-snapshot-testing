@@ -387,6 +387,58 @@ final class SnapshotTestingTests: XCTestCase {
     assertSnapshots(matching: tableViewController, as: [.image(on: .iPhoneX), .image(on: .iPhoneXsMax)])
     #endif
   }
+  
+  func testScrollingScreenshot() {
+    #if os(iOS)
+    class MyViewController: UIViewController {
+      var lastView: UIView? = nil
+      static var viewCount = 50
+      
+      override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        (0...50).forEach { value in
+          let view = UIView()
+          view.backgroundColor = {
+            if value % 10 == 0 {
+              return .red
+            } else if value % 5 == 0 {
+              return .orange
+            } else {
+              return .blue
+            }
+          }()
+          view.translatesAutoresizingMaskIntoConstraints = false
+          
+          self.view.addSubview(view)
+          
+          NSLayoutConstraint.activate([
+            view.heightAnchor.constraint(equalToConstant: 20),
+            view.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+            view.trailingAnchor.constraint(equalTo: self.view.trailingAnchor)
+          ])
+          
+          if let lastView = lastView {
+            view.topAnchor.constraint(equalTo: lastView.bottomAnchor).isActive = true
+          } else {
+            view.topAnchor.constraint(equalTo: self.view.topAnchor).isActive = true
+          }
+          
+          if value == 50 {
+            view.bottomAnchor.constraint(equalTo: self.view.bottomAnchor).isActive = true
+          }
+          
+          lastView = view
+        }
+        
+      }
+    }
+    
+    let viewController = MyViewController()
+    assertSnapshot(matching: viewController, as: .image(on: .iPhoneSe), named: "iphone-se")
+    assertSnapshot(matching: viewController, as: .image(on: ViewImageConfig.iPhoneSe.with(scrolling: .vertical)), named: "iphone-se-scrolling")
+    #endif
+  }
 
   func testTraits() {
     #if os(iOS) || os(tvOS)

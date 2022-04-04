@@ -32,19 +32,33 @@ public struct ViewImageConfig {
     case landscape(splitView: LandscapeSplits)
     case portrait(splitView: PortraitSplits)
   }
+  public enum Scrolling {
+    case none
+    case vertical
+    case horizontal
+  }
 
   public var safeArea: UIEdgeInsets
   public var size: CGSize?
   public var traits: UITraitCollection
+  public var scrolling: Scrolling
 
   public init(
     safeArea: UIEdgeInsets = .zero,
     size: CGSize? = nil,
-    traits: UITraitCollection = .init()
-    ) {
+    traits: UITraitCollection = .init(),
+    scrolling: Scrolling = .none
+  ) {
     self.safeArea = safeArea
     self.size = size
     self.traits = traits
+    self.scrolling = scrolling
+  }
+  
+  public func with(scrolling: Scrolling) -> ViewImageConfig {
+    var copy = self
+    copy.scrolling = scrolling
+    return copy
   }
 
   #if os(iOS)
@@ -816,7 +830,26 @@ func prepareView(
   viewController: UIViewController
   ) -> () -> Void {
   let size = config.size ?? viewController.view.frame.size
-  view.frame.size = size
+  let fitting: CGSize? = {
+    switch config.scrolling {
+    case .none:
+      return nil
+    case .vertical:
+      return viewController.view.systemLayoutSizeFitting(
+        size,
+        withHorizontalFittingPriority: .defaultHigh,
+        verticalFittingPriority: .defaultLow
+      )
+    case .horizontal:
+      return viewController.view.systemLayoutSizeFitting(
+        size,
+        withHorizontalFittingPriority: .defaultLow,
+        verticalFittingPriority: .defaultHigh
+      )
+    }
+  }()
+  
+  view.frame.size = fitting ?? size
   if view != viewController.view {
     viewController.view.bounds = view.bounds
     viewController.view.addSubview(view)
@@ -831,7 +864,7 @@ func prepareView(
     window.frame.size = size
   } else {
     window = Window(
-      config: .init(safeArea: config.safeArea, size: config.size ?? size, traits: traits),
+      config: .init(safeArea: config.safeArea, size: fitting ?? config.size ?? size, traits: traits),
       viewController: viewController
     )
   }
