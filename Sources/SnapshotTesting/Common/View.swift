@@ -831,20 +831,22 @@ func prepareView(
   ) -> () -> Void {
   let size = config.size ?? viewController.view.frame.size
   let fitting: CGSize? = {
+    let potentialNavigationController = viewController as? UINavigationController
+    let viewController = potentialNavigationController?.visibleViewController ?? viewController
     switch config.scrolling {
     case .none:
       return nil
     case .vertical:
       return viewController.view.systemLayoutSizeFitting(
         size,
-        withHorizontalFittingPriority: .defaultHigh,
+        withHorizontalFittingPriority: .required,
         verticalFittingPriority: .defaultLow
       )
     case .horizontal:
       return viewController.view.systemLayoutSizeFitting(
         size,
         withHorizontalFittingPriority: .defaultLow,
-        verticalFittingPriority: .defaultHigh
+        verticalFittingPriority: .required
       )
     }
   }()
