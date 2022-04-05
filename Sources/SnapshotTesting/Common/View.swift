@@ -827,10 +827,13 @@ func prepareView(
   drawHierarchyInKeyWindow: Bool,
   traits: UITraitCollection,
   view: UIView,
-  viewController: UIViewController
+  viewController: UIViewController,
+  acknowledgeScrolling: Bool = false
   ) -> () -> Void {
   let size = config.size ?? viewController.view.frame.size
   let fitting: CGSize? = {
+    guard acknowledgeScrolling else { return nil }
+      
     let potentialNavigationController = viewController as? UINavigationController
     let viewController = potentialNavigationController?.visibleViewController ?? viewController
     switch config.scrolling {
@@ -891,7 +894,7 @@ func snapshotView(
   )
   -> Async<UIImage> {
     let initialFrame = view.frame
-    let dispose = prepareView(
+    let prepareFirstRound = prepareView(
       config: config,
       drawHierarchyInKeyWindow: drawHierarchyInKeyWindow,
       traits: traits,
@@ -900,6 +903,23 @@ func snapshotView(
     )
     // NB: Avoid safe area influence.
     if config.safeArea == .zero { view.frame.origin = .init(x: offscreen, y: offscreen) }
+    
+    // For snapshots with full scrolling, we want to first draw the initial view to make
+    // sure the environment is prepared (e.g. when you use iPad for iPhone device size)
+    // And then get the full fitting size we can get afterwards.
+    let dispose: () -> Void
+    if (config.scrolling != .none) {
+      dispose = prepareView(
+        config: config,
+        drawHierarchyInKeyWindow: drawHierarchyInKeyWindow,
+        traits: traits,
+        view: view,
+        viewController: viewController,
+        acknowledgeScrolling: true
+      )
+    } else {
+        dispose = prepareFirstRound
+    }
 
     return (view.snapshot ?? Async { callback in
       addImagesForRenderedViews(view).sequence().run { views in
